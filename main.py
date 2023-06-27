@@ -72,18 +72,18 @@ df_ratings.index = df_ratings.join(df_books.set_index('isbn'))['title'].sort_ind
 model = NearestNeighbors(metric='cosine')
 model.fit(df_ratings.values)
 
-def get_recommends(title: str = ""):
+def get_recommends(book: str = ""):
     try:
-        book = df_ratings.loc[title]
-        
+        title = df_ratings.loc[book]
+
     except KeyError as e:
         print('Type an existing book, ', e, 'does not exist')
 
         return
 
-    distance, indice = model.kneighbors([book.values], n_neighbors=6)
+    distance, indice = model.kneighbors([title.values], n_neighbors=6)
 
-    recommended_books = [title, pd.DataFrame({'title': df_ratings.iloc[indice[0]].index.values, 'distance': distance[0]}).sort_values(by='distance', ascending=False).head(5).values]
+    recommended_books = [book, pd.DataFrame({'title': df_ratings.iloc[indice[0]].index.values, 'distance': distance[0]}).sort_values(by='distance', ascending=False).head(5).values]
     
     return recommended_books
 
