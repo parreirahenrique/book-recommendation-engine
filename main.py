@@ -49,12 +49,62 @@ df_ratings = pd.read_csv(
     dtype={"user": "int32", "isbn": "str", "rating": "float32"})
 
 df_users = pd.read_csv(
-    ratings_filename,
+    users_filename,
     encoding = "ISO-8859-1",
     sep=";",
     header=0,
-    names=["user", "isbn", "rating"],
-    usecols=["user", "isbn", "rating"],
-    dtype={"user": "int32", "isbn": "str", "rating": "float32"})
+    names=["user", "location", "age"],
+    usecols=["user", "location", "age"],
+    dtype={"user": "int32", "location": "str", "age": "str"})
 
 # Filtering dataframes
+user_ratings = df_ratings['user'].value_counts()
+book_ratings = df_ratings['isbn'].value_counts()
+
+df_books.dropna(inplace=True)
+df_ratings.dropna(inplace=True)
+
+df_ratings = df_ratings[(~df_ratings['user'].isin(user_ratings[user_ratings < 200].index)) & (~df_ratings['isbn'].isin(book_ratings[book_ratings < 100].index))]
+
+df_ratings = df_ratings.pivot_table(index=['user'],columns=['isbn'],values='rating').fillna(0).T
+df_ratings.index = df_ratings.join(df_books.set_index('isbn'))['title'].sort_index()
+
+model = NearestNeighbors(metric='cosine')
+model.fit(df_ratings.values)
+
+def get_recommends(title: str = ""):
+    try:
+        book = df_ratings.loc[title]
+        
+    except KeyError as e:
+        print('Type an existing book, ', e, 'does not exist')
+
+        return
+
+    distance, indice = model.kneighbors([book.values], n_neighbors=6)
+
+    recommended_books = [title, pd.DataFrame({'title': df_ratings.iloc[indice[0]].index.values, 'distance': distance[0]}).sort_values(by='distance', ascending=False).head(5).values]
+    
+    return recommended_books
+
+books = get_recommends("Where the Heart Is (Oprah's Book Club (Paperback))")
+print(books)
+
+def test_book_recommendation():
+  test_pass = True
+  recommends = get_recommends("Where the Heart Is (Oprah's Book Club (Paperback))")
+  if recommends[0] != "Where the Heart Is (Oprah's Book Club (Paperback))":
+    test_pass = False
+  recommended_books = ["I'll Be Seeing You", 'The Weight of Water', 'The Surgeon', 'I Know This Much Is True']
+  recommended_books_dist = [0.8, 0.77, 0.77, 0.77]
+  for i in range(2): 
+    if recommends[1][i][0] not in recommended_books:
+      test_pass = False
+    if abs(recommends[1][i][1] - recommended_books_dist[i]) >= 0.05:
+      test_pass = False
+  if test_pass:
+    print("You passed the challenge! 🎉🎉🎉🎉🎉")
+  else:
+    print("You havn't passed yet. Keep trying!")
+
+test_book_recommendation()
